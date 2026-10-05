@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Autonomous Driving Model Benchmark</title>
+  <style>
+    :root {
+      --bg: #0d1117; --surface: #161b22; --surface2: #1c2128;
+      --border: #30363d; --text: #e6edf3; --muted: #8b949e;
+      --accent: #58a6ff; --green: #3fb950; --yellow: #d29922;
+      --red: #f85149; --purple: #bc8cff; --orange: #ffa657;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: var(--bg); color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-size: 14px; line-height: 1.5; padding: 32px 24px; }
+
+    header { max-width: 1200px; margin: 0 auto 28px; }
+    h1 { font-size: 24px; font-weight: 700; color: var(--accent); margin-bottom: 4px; }
+    .subtitle { color: var(--muted); font-size: 13px; }
+    .subtitle span { color: var(--text); font-weight: 500; }
+
+    .section-label {
+      max-width: 1200px; margin: 36px auto 12px;
+      font-size: 11px; text-transform: uppercase; letter-spacing: .08em;
+      color: var(--muted); border-bottom: 1px solid var(--border); padding-bottom: 6px;
+    }
+
+    .controls { max-width: 1200px; margin: 0 auto 14px;
+      display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+    .controls input { background: var(--surface); border: 1px solid var(--border);
+      border-radius: 6px; color: var(--text); padding: 6px 12px;
+      font-size: 13px; width: 220px; }
+    .controls input:focus { outline: none; border-color: var(--accent); }
+    .badge { background: var(--surface); border: 1px solid var(--border);
+      border-radius: 12px; padding: 3px 10px; font-size: 12px; color: var(--muted); }
+
+    .table-wrap { max-width: 1200px; margin: 0 auto;
+      overflow-x: auto; border-radius: 8px; border: 1px solid var(--border); }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    thead tr { background: var(--surface); }
+    thead th { padding: 10px 14px; text-align: left; color: var(--muted);
+      font-weight: 600; font-size: 11px; text-transform: uppercase;
+      letter-spacing: .04em; border-bottom: 1px solid var(--border);
+      white-space: nowrap; cursor: pointer; user-select: none; }
+    thead th:hover { color: var(--accent); }
+    thead th.sorted .sort-arrow { color: var(--accent); }
+    tbody tr { border-bottom: 1px solid var(--border); transition: background .1s; }
+    tbody tr:last-child { border-bottom: none; }
+    tbody tr:hover { background: rgba(88,166,255,.05); }
+    td { padding: 10px 14px; vertical-align: middle; white-space: nowrap; }
+
+    .model-name { font-weight: 600; }
+    .model-org  { font-size: 11px; color: var(--muted); margin-top: 1px; }
+    .model-type { display: inline-block; border-radius: 4px; padding: 2px 7px;
+      font-size: 11px; font-weight: 500; }
+    .type-wam { background: rgba(188,140,255,.15); color: var(--purple); }
+    .type-vla { background: rgba(63,185,80,.15); color: var(--green); }
+    .type-e2e { background: rgba(255,166,87,.15); color: var(--orange); }
+    .type-vlm { background: rgba(210,153,34,.15); color: var(--yellow); }
+
+    .latency-chip { display: inline-flex; align-items: center; gap: 5px;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 6px; padding: 3px 8px;
+      font-family: "SF Mono","Fira Code",monospace; font-size: 12px; }
+    .latency-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+    .lat-fast   { background: var(--green); }
+    .lat-medium { background: var(--yellow); }
+    .lat-slow   { background: var(--red); }
+    .lat-note   { font-size: 11px; color: var(--muted); margin-top: 2px; }
+
+    .metric-val { font-family: "SF Mono","Fira Code",monospace; }
+    .best { color: var(--green); font-weight: 700;
+      font-family: "SF Mono","Fira Code",monospace; }
+    .na { color: var(--border); }
+    .note-chip { font-size: 11px; color: var(--muted);
+      max-width: 190px; overflow: hidden; text-overflow: ellipsis; display: block; }
+
+    /* ── Detail cards ─────────────────────────────────────────────── */
+    .cards { max-width: 1200px; margin: 0 auto;
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(340px,1fr)); gap: 16px; }
+    .card { background: var(--surface); border: 1px solid var(--border);
+      border-radius: 8px; padding: 16px; }
+    .card h3 { font-size: 13px; font-weight: 600; margin-bottom: 12px;
+      color: var(--accent); }
+    .card-row { display: flex; justify-content: space-between;
+      padding: 4px 0; font-size: 12px; border-bottom: 1px solid var(--border); }
+    .card-row:last-child { border-bottom: none; }
+    .card-label { color: var(--muted); }
+    .card-val   { font-family: "SF Mono","Fira Code",monospace; color: var(--text); }
+
+    /* bar chart */
+    .bar-chart { margin-top: 8px; }
+    .bar-row { display: flex; align-items: center; gap: 8px;
+      font-size: 12px; margin-bottom: 6px; }
+    .bar-label { width: 90px; color: var(--muted); text-align: right;
+      font-size: 11px; flex-shrink: 0; }
+    .bar-track { flex: 1; background: var(--surface2);
+      border-radius: 4px; height: 14px; overflow: hidden; }
+    .bar-fill  { height: 100%; border-radius: 4px; transition: width .4s; }
+    .bar-val   { width: 70px; font-family: "SF Mono","Fira Code",monospace;
+      font-size: 11px; color: var(--text); }
+
+    footer { max-width: 1200px; margin: 40px auto 0; font-size: 12px;
+      color: var(--muted); border-top: 1px solid var(--border); padding-top: 14px; }
+    footer a { color: var(--accent); text-decoration: none; }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>🚗 Autonomous Driving Model Benchmark</h1>
+  <p class="subtitle">
+    Hardware: <span>NVIDIA H100 NVL 80 GB · W-Odawara</span> &nbsp;·&nbsp;
+    Updated: <span id="updated">—</span> &nbsp;·&nbsp;
+    <span id="model-count">—</span> models
+  </p>
+</header>
+
+<div class="section-label">Benchmark Table</div>
+
+<div class="controls">
+  <input id="search" type="text" placeholder="Filter models…" />
+  <span class="badge" id="visible-count">—</span>
+  <span class="badge">Click column header to sort</span>
+</div>
+
+<div class="table-wrap">
+  <table id="bench-table">
+    <thead>
+      <tr>
+        <th data-col="name">Model <span class="sort-arrow">↕</span></th>
+        <th data-col="type">Type <span class="sort-arrow">↕</span></th>
+        <th data-col="params">Params <span class="sort-arrow">↕</span></th>
+        <th data-col="latency_ms" title="Single front-cam inference on H100 NVL">
+          H100 Latency <span class="sort-arrow">↕</span></th>
+        <th data-col="navsim_pdms">NAVSIM PDMS↑ <span class="sort-arrow">↕</span></th>
+        <th data-col="nuscenes_l2">nuScenes L2↓ <span class="sort-arrow">↕</span></th>
+        <th data-col="wod_rfs">WOD RFS↑ <span class="sort-arrow">↕</span></th>
+        <th data-col="physicalai_ade3s">PhysAI ADE@3s↓ <span class="sort-arrow">↕</span></th>
+        <th data-col="nec_ade">NEC ZS ADE↓ <span class="sort-arrow">↕</span></th>
+        <th>Notes</th>
+      </tr>
+    </thead>
+    <tbody id="table-body"></tbody>
+  </table>
+</div>
+
+<!-- ── Curious-VLA detail section ──────────────────────────────────────── -->
+<div class="section-label">Curious-VLA — Detailed Timing Analysis (H100 NVL)</div>
+<div class="cards">
+
+  <div class="card">
+    <h3>📊 Real NAVSIM Scenarios — FP16 (138 scenarios)</h3>
+    <div class="card-row"><span class="card-label">Mean E2E</span><span class="card-val">1440 ms</span></div>
+    <div class="card-row"><span class="card-label">p50</span><span class="card-val">1424 ms</span></div>
+    <div class="card-row"><span class="card-label">p90</span><span class="card-val">1472 ms</span></div>
+    <div class="card-row"><span class="card-label">p99</span><span class="card-val">1499 ms</span></div>
+    <div class="card-row"><span class="card-label">Prompt tokens</span><span class="card-val">1242 avg</span></div>
+    <div class="card-row"><span class="card-label">Output tokens</span><span class="card-val">367 avg</span></div>
+    <div class="card-row"><span class="card-label">Generation speed</span><span class="card-val">258 tok/s</span></div>
+    <div class="card-row"><span class="card-label">Throughput</span><span class="card-val">0.694 scenarios/s</span></div>
+  </div>
+
+  <div class="card">
+    <h3>⚡ Phase Breakdown (mean per scenario)</h3>
+    <div class="bar-chart">
+      <div class="bar-row">
+        <span class="bar-label">LLM call</span>
+        <div class="bar-track"><div class="bar-fill" style="width:99.3%;background:var(--red)"></div></div>
+        <span class="bar-val">1430 ms · 99.3%</span>
+      </div>
+      <div class="bar-row">
+        <span class="bar-label">Image save</span>
+        <div class="bar-track"><div class="bar-fill" style="width:0.6%;background:var(--orange)"></div></div>
+        <span class="bar-val">8.8 ms · 0.6%</span>
+      </div>
+      <div class="bar-row">
+        <span class="bar-label">Prompt build</span>
+        <div class="bar-track"><div class="bar-fill" style="width:0.02%;background:var(--yellow)"></div></div>
+        <span class="bar-val">0.3 ms · 0.0%</span>
+      </div>
+      <div class="bar-row">
+        <span class="bar-label">Parse + denorm</span>
+        <div class="bar-track"><div class="bar-fill" style="width:0.01%;background:var(--yellow)"></div></div>
+        <span class="bar-val">0.2 ms · 0.0%</span>
+      </div>
+    </div>
+    <p style="font-size:11px;color:var(--muted);margin-top:10px">
+      99.3% of latency is LLM generation. All pre/post-processing &lt; 10 ms total.
+    </p>
+  </div>
+
+  <div class="card">
+    <h3>🔬 FP16 vs FP8 — Synthetic Benchmark (50 requests each)</h3>
+    <div class="bar-chart">
+      <div class="bar-row">
+        <span class="bar-label">FP16 mean</span>
+        <div class="bar-track"><div class="bar-fill" style="width:100%;background:var(--accent)"></div></div>
+        <span class="bar-val">929 ms</span>
+      </div>
+      <div class="bar-row">
+        <span class="bar-label">FP8 mean</span>
+        <div class="bar-track"><div class="bar-fill" style="width:84%;background:var(--green)"></div></div>
+        <span class="bar-val">781 ms · 1.19×</span>
+      </div>
+      <div class="bar-row">
+        <span class="bar-label">FP16 p99</span>
+        <div class="bar-track"><div class="bar-fill" style="width:100%;background:rgba(88,166,255,.4)"></div></div>
+        <span class="bar-val">971 ms</span>
+      </div>
+      <div class="bar-row">
+        <span class="bar-label">FP8 p99</span>
+        <div class="bar-track"><div class="bar-fill" style="width:86%;background:rgba(63,185,80,.4)"></div></div>
+        <span class="bar-val">833 ms</span>
+      </div>
+    </div>
+    <div style="margin-top:10px">
+      <div class="card-row"><span class="card-label">FP16 throughput</span><span class="card-val">281 tok/s</span></div>
+      <div class="card-row"><span class="card-label">FP8 throughput</span><span class="card-val">294 tok/s · +4.6%</span></div>
+      <div class="card-row"><span class="card-label">FP16 output tok</span><span class="card-val">261 avg</span></div>
+      <div class="card-row"><span class="card-label">FP8 output tok</span><span class="card-val">229 avg (shorter CoT)</span></div>
+    </div>
+    <p style="font-size:11px;color:var(--muted);margin-top:8px">
+      * Synthetic 480×960 input. Real-scenario latency ~55% higher due to longer CoT.
+    </p>
+  </div>
+
+</div>
+
+<footer>
+  Data: in-house measurements on W-Odawara (8× H100 NVL 80 GB).
+  Latency = wall-clock single-request, model load excluded.
+  &nbsp;|&nbsp; <a href="https://github.com/H-EmbodVis/SimWAM">SimWAM</a>
+  &nbsp;|&nbsp; NEC ZS = zero-shot on TKS-to-NEC mcap (Japanese urban, NAVSIM-trained model).
+  &nbsp;|&nbsp; * = synthetic image input.
+</footer>
+
+<script>
+  let allModels = [], sortCol = 'latency_ms', sortAsc = true;
+
+  function latDot(ms) {
+    if (ms === null) return '';
+    return ms <= 200 ? 'lat-fast' : ms <= 800 ? 'lat-medium' : 'lat-slow';
+  }
+  function fmtLat(ms, note) {
+    if (ms === null) return '<span class="na">—</span>';
+    const v = ms >= 1000 ? (ms/1000).toFixed(2)+'s' : ms+'ms';
+    return `<span class="latency-chip"><span class="latency-dot ${latDot(ms)}"></span>${v}</span>
+            ${note ? `<div class="lat-note">${note}</div>` : ''}`;
+  }
+  function typeClass(t) {
+    if (!t) return '';
+    if (t.includes('World')) return 'type-wam';
+    if (t.includes('VLA'))   return 'type-vla';
+    if (t.includes('VLM'))   return 'type-vlm';
+    return 'type-e2e';
+  }
+  function computeBests(models) {
+    const bests = {}, hb = {navsim_pdms:true, wod_rfs:true};
+    ['latency_ms','navsim_pdms','nuscenes_l2','wod_rfs','physicalai_ade3s','nec_ade'].forEach(c => {
+      const vals = models.map(m => m[c]).filter(v => v !== null && v !== undefined);
+      if (!vals.length) return;
+      bests[c] = hb[c] ? Math.max(...vals) : Math.min(...vals);
+    });
+    return bests;
+  }
+  function cell(m, col, dec, higherBetter) {
+    const v = m[col];
+    if (v === null || v === undefined) return '<span class="na">—</span>';
+    const bests = cell._bests || {};
+    const isBest = bests[col] !== undefined && v === bests[col];
+    return `<span class="${isBest ? 'best' : 'metric-val'}">${Number(v).toFixed(dec)}</span>`;
+  }
+
+  function renderTable(models) {
+    const bests = computeBests(models);
+    cell._bests = bests;
+    const rows = models.map(m => `<tr>
+      <td><div class="model-name">${m.name}</div><div class="model-org">${m.org||''}</div></td>
+      <td><span class="model-type ${typeClass(m.type)}">${m.type||'—'}</span></td>
+      <td class="metric-val">${m.params||'<span class="na">—</span>'}</td>
+      <td>${fmtLat(m.latency_ms, m.latency_note)}</td>
+      <td>${cell(m,'navsim_pdms',1,true)}</td>
+      <td>${cell(m,'nuscenes_l2',2,false)}</td>
+      <td>${cell(m,'wod_rfs',2,true)}</td>
+      <td>${cell(m,'physicalai_ade3s',2,false)}</td>
+      <td>${cell(m,'nec_ade',2,false)}</td>
+      <td><span class="note-chip" title="${m.notes||''}">${m.notes||''}</span></td>
+    </tr>`).join('');
+    document.getElementById('table-body').innerHTML = rows;
+    document.getElementById('visible-count').textContent = models.length + ' models';
+  }
+
+  function sortModels(ms, col, asc) {
+    return [...ms].sort((a,b) => {
+      const va=a[col], vb=b[col];
+      if (va===null&&vb===null) return 0;
+      if (va===null) return 1; if (vb===null) return -1;
+      if (typeof va==='string') return asc ? va.localeCompare(vb) : vb.localeCompare(va);
+      return asc ? va-vb : vb-va;
+    });
+  }
+
+  function applyFilters() {
+    const q = document.getElementById('search').value.toLowerCase();
+    let f = allModels.filter(m => !q ||
+      m.name.toLowerCase().includes(q) ||
+      (m.org||'').toLowerCase().includes(q) ||
+      (m.type||'').toLowerCase().includes(q) ||
+      (m.notes||'').toLowerCase().includes(q));
+    renderTable(sortModels(f, sortCol, sortAsc));
+  }
+
+  fetch('data.json').then(r=>r.json()).then(d => {
+    allModels = d.models;
+    document.getElementById('updated').textContent = d.updated;
+    document.getElementById('model-count').textContent = allModels.length;
+    applyFilters();
+  });
+
+  document.getElementById('search').addEventListener('input', applyFilters);
+
+  document.querySelectorAll('thead th[data-col]').forEach(th => {
+    th.addEventListener('click', () => {
+      const col = th.dataset.col;
+      if (sortCol===col) sortAsc=!sortAsc; else { sortCol=col; sortAsc=true; }
+      document.querySelectorAll('thead th').forEach(t => t.classList.remove('sorted'));
+      th.classList.add('sorted');
+      th.querySelector('.sort-arrow').textContent = sortAsc ? '↑' : '↓';
+      applyFilters();
+    });
+  });
+</script>
+</body>
+</html>
