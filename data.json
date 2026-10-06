@@ -1,5 +1,5 @@
 {
-  "updated": "2026-10-05",
+  "updated": "2026-10-06",
   "hardware": "NVIDIA H100 NVL (80 GB)",
   "notes_global": "Latency = wall-clock single-request inference, model load excluded. * = synthetic image input.",
   "models": [
@@ -25,7 +25,7 @@
       "params": "4B",
       "latency_ms": 70,
       "latency_note": "single front cam, TRT FP16",
-      "navsim_pdms": null,
+      "navsim_pdms": 88.84,
       "nuscenes_l2": null,
       "wod_rfs": null,
       "physicalai_ade3s": null,
